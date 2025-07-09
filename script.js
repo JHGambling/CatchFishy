@@ -89,6 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    drawDepthMeter();
+    
     requestAnimationFrame(loop);
   }
 
@@ -150,6 +152,34 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 }
 
+function drawDepthMeter() {
+  const meterWidth = WIDTH * 0.03;
+  const meterHeight = HEIGHT * 0.5;
+  const meterX = WIDTH * 0.02;
+  const meterY = HEIGHT * 0.25;
+
+  // Farbverlauf
+  const gradient = ctx.createLinearGradient(0, meterY, 0, meterY + meterHeight);
+  gradient.addColorStop(0, '#66ccff');   // Hellblau oben
+  gradient.addColorStop(1, '#001f33');   // Dunkelblau unten
+  ctx.fillStyle = gradient;
+  ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
+
+  // Rahmen
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
+
+  // Positionsmarker
+  if (maxDepth > 0) {
+    const relativePos = currentDepth / maxDepth;
+    const markerHeight = meterHeight * 0.02;
+    const markerY = meterY + relativePos * meterHeight - markerHeight / 2;
+
+    ctx.fillStyle = 'yellow';
+    ctx.fillRect(meterX, markerY, meterWidth, markerHeight);
+  }
+}
 
   function generateFish() {
     fish = [];
