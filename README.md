@@ -23,6 +23,14 @@ A deep-sea fishing adventure where players cast their lines into the depths to c
 npm install
 ```
 
+### Asset Structure
+All game assets (images, styles) are located in the `public/` directory:
+- `public/images/fish/` - Fish sprites and shark image
+- `public/images/logo.png` - Game logo
+- `public/style.css` - Game styles
+
+Vite automatically copies these assets to the build output.
+
 ### Development Server
 ```bash
 npm run dev
