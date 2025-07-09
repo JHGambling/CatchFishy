@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let maxDepth = 0;
   let currentDepth = 0;
 
-  const absoluteMaxDepth = 2000; // ✨ Maximale Tiefe, z. B. 2000 px
+  const absoluteMaxDepth = 10000;
 
   let fish = [];
   let caughtFishes = [];
@@ -32,6 +32,19 @@ document.addEventListener('DOMContentLoaded', () => {
     fishImages.push(img);
   }
 
+  // Shark
+  const sharkImage = new Image();
+  sharkImage.src = 'images/fish/shark.png';
+
+  let shark = {
+    active: false,
+    x: 0,
+    y: 0,
+    speed: 0,
+    targetX: 0,
+    targetY: 0
+  };
+
   window.addEventListener('resize', () => {
     WIDTH = window.innerWidth;
     HEIGHT = window.innerHeight;
@@ -44,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loop() {
-    // ✨ Wasserfarbe abhängig von absoluter Tiefe
     let waterBrightness = Math.min(255, Math.max(30, 255 - Math.floor((currentDepth / absoluteMaxDepth) * 225)));
     ctx.fillStyle = `rgb(0, ${waterBrightness}, ${waterBrightness + 30})`;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -86,9 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } else {
         updateFish();
+        updateShark();
         drawFishes();
         drawHook();
+        drawShark();
         checkCollisions();
+        checkSharkSteal();
+        maybeSpawnShark();
       }
     }
 
@@ -168,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.lineWidth = 2;
     ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
 
-    // ✨ Marker immer relativ zur absoluten maximalen Tiefe
     const relativePos = currentDepth / absoluteMaxDepth;
     const markerHeight = meterHeight * 0.02;
     const markerY = meterY + relativePos * meterHeight - markerHeight / 2;
@@ -179,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function generateFish() {
     fish = [];
-    const count = Math.floor(absoluteMaxDepth / 100) + 20; // ✨ basiert auf absoluter Tiefe
+    const count = Math.floor(absoluteMaxDepth / 100) + 20;
     for (let i = 0; i < count; i++) {
       const rarityRoll = Math.random();
       let rarity, valueRange, scaleRange;
@@ -207,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       fish.push({
         x: Math.random() * WIDTH,
-        depth: Math.random() * absoluteMaxDepth,  // ✨ alle Fische über gesamte Tiefe verteilt
+        depth: Math.random() * absoluteMaxDepth,
         caught: false,
         image: randomImg,
         value: value,
@@ -257,6 +272,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function maybeSpawnShark() {
+    if (!shark.active && Math.random() < 0.003) {
+      shark.active = true;
+      shark.x = Math.random() < 0.5 ? -WIDTH * 0.1 : WIDTH * 1.1;
+      shark.y = HEIGHT * (0.75 + Math.random() * 0.1);
+      shark.targetX = lineX;
+      shark.targetY = HEIGHT * 0.75;
+      shark.speed = WIDTH * 0.003;
+    }
+  }
+
+  function updateShark() {
+    if (!shark.active) return;
+    const dx = shark.targetX - shark.x;
+    const dy = shark.targetY - shark.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1) {
+      shark.x += (dx / dist) * shark.speed;
+      shark.y += (dy / dist) * shark.speed;
+    }
+  }
+
+  function drawShark() {
+    if (!shark.active) return;
+    const sizeW = WIDTH * 0.15;
+    const sizeH = HEIGHT * 0.1;
+    ctx.drawImage(sharkImage, shark.x - sizeW / 2, shark.y - sizeH / 2, sizeW, sizeH);
+  }
+
+  function checkSharkSteal() {
+    if (!shark.active) return;
+    const hookY = HEIGHT * 0.75;
+    if (Math.hypot(shark.x - lineX, shark.y - hookY) < WIDTH * 0.05) {
+      if (caughtFishes.length > 0) {
+        const stolen = caughtFishes.splice(0, 1)[0];
+        credits -= Math.min(credits, stolen.value);
+        overlay.innerText = `⚠️ Hai hat einen ${stolen.rarity.toUpperCase()} Fisch gestohlen (-${stolen.value} Credits)!`;
+      } else {
+        overlay.innerText = `⚠️ Hai ist leer ausgegangen.`;
+      }
+      shark.active = false;
+    }
+  }
+
   function resetGame() {
     chargeValue = 0;
     chargeDirection = 1;
@@ -264,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lineX = WIDTH / 2;
     score = 0;
     caughtFishes = [];
+    shark.active = false;
   }
 
   document.addEventListener('keydown', (e) => {
@@ -274,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       credits -= costPerCast;
-      maxDepth = (chargeValue / 100) * absoluteMaxDepth;  // ✨ Tiefe je nach Wurf
+      maxDepth = (chargeValue / 100) * absoluteMaxDepth;
       overlay.innerText = '';
       generateFish();
       currentDepth = 0;
