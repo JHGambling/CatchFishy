@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let maxDepth = 0;
   let currentDepth = 0;
 
+  const absoluteMaxDepth = 2000; // ✨ Maximale Tiefe, z. B. 2000 px
+
   let fish = [];
   let caughtFishes = [];
   let score = 0;
@@ -42,7 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loop() {
-    let waterBrightness = Math.min(255, Math.max(30, 255 - Math.floor(currentDepth / 6)));
+    // ✨ Wasserfarbe abhängig von absoluter Tiefe
+    let waterBrightness = Math.min(255, Math.max(30, 255 - Math.floor((currentDepth / absoluteMaxDepth) * 225)));
     ctx.fillStyle = `rgb(0, ${waterBrightness}, ${waterBrightness + 30})`;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -90,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     drawDepthMeter();
-    
+
     requestAnimationFrame(loop);
   }
 
@@ -124,68 +127,60 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawHook() {
-  const hookY = HEIGHT * 0.75;
+    const hookY = HEIGHT * 0.75;
 
-  // Schnur
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(WIDTH / 2, 0);
-  ctx.lineTo(lineX, hookY);
-  ctx.stroke();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(WIDTH / 2, 0);
+    ctx.lineTo(lineX, hookY);
+    ctx.stroke();
 
-  // Haken
-  ctx.beginPath();
-  ctx.arc(lineX, hookY, WIDTH * 0.01, 0, 2 * Math.PI);
-  ctx.fillStyle = 'red';
-  ctx.fill();
+    ctx.beginPath();
+    ctx.arc(lineX, hookY, WIDTH * 0.01, 0, 2 * Math.PI);
+    ctx.fillStyle = 'red';
+    ctx.fill();
 
-  // Gefangene Fische am Haken anzeigen
-  for (let i = 0; i < caughtFishes.length; i++) {
-    const f = caughtFishes[i];
-    const offset = i * HEIGHT * 0.05; // gestapelt untereinander
-    const y = hookY + offset;
+    for (let i = 0; i < caughtFishes.length; i++) {
+      const f = caughtFishes[i];
+      const offset = i * HEIGHT * 0.05;
+      const y = hookY + offset;
 
-    const sizeW = WIDTH * f.scale;
-    const sizeH = HEIGHT * f.scale * 0.8;
-    ctx.drawImage(f.image, lineX - sizeW / 2, y - sizeH / 2, sizeW, sizeH);
+      const sizeW = WIDTH * f.scale;
+      const sizeH = HEIGHT * f.scale * 0.8;
+      ctx.drawImage(f.image, lineX - sizeW / 2, y - sizeH / 2, sizeW, sizeH);
+    }
   }
-}
 
-function drawDepthMeter() {
-  const meterWidth = WIDTH * 0.03;
-  const meterHeight = HEIGHT * 0.5;
-  const meterX = WIDTH * 0.02;
-  const meterY = HEIGHT * 0.25;
+  function drawDepthMeter() {
+    const meterWidth = WIDTH * 0.03;
+    const meterHeight = HEIGHT * 0.5;
+    const meterX = WIDTH * 0.02;
+    const meterY = HEIGHT * 0.25;
 
-  // Farbverlauf
-  const gradient = ctx.createLinearGradient(0, meterY, 0, meterY + meterHeight);
-  gradient.addColorStop(0, '#66ccff');   // Hellblau oben
-  gradient.addColorStop(1, '#001f33');   // Dunkelblau unten
-  ctx.fillStyle = gradient;
-  ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
+    const gradient = ctx.createLinearGradient(0, meterY, 0, meterY + meterHeight);
+    gradient.addColorStop(0, '#66ccff');
+    gradient.addColorStop(1, '#001f33');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
 
-  // Rahmen
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
 
-  // Positionsmarker
-  if (maxDepth > 0) {
-    const relativePos = currentDepth / maxDepth;
+    // ✨ Marker immer relativ zur absoluten maximalen Tiefe
+    const relativePos = currentDepth / absoluteMaxDepth;
     const markerHeight = meterHeight * 0.02;
     const markerY = meterY + relativePos * meterHeight - markerHeight / 2;
 
     ctx.fillStyle = 'yellow';
     ctx.fillRect(meterX, markerY, meterWidth, markerHeight);
   }
-}
 
   function generateFish() {
     fish = [];
-    const count = Math.floor(maxDepth / 100) + 20;
+    const count = Math.floor(absoluteMaxDepth / 100) + 20; // ✨ basiert auf absoluter Tiefe
     for (let i = 0; i < count; i++) {
-      // Rarity bestimmen
       const rarityRoll = Math.random();
       let rarity, valueRange, scaleRange;
       if (rarityRoll < 0.05) {
@@ -212,7 +207,7 @@ function drawDepthMeter() {
 
       fish.push({
         x: Math.random() * WIDTH,
-        depth: Math.random() * maxDepth,
+        depth: Math.random() * absoluteMaxDepth,  // ✨ alle Fische über gesamte Tiefe verteilt
         caught: false,
         image: randomImg,
         value: value,
@@ -229,22 +224,18 @@ function drawDepthMeter() {
     for (let f of fish) {
       if (f.caught) continue;
 
-      // Grundbewegung (langsames Driften)
       f.driftOffset += 0.02;
       f.x += Math.sin(f.driftOffset) * 0.5;
 
-      // Ausweichen bei Annäherung
       const screenY = (f.depth - currentDepth) + hookY;
       const dist = Math.hypot(f.x - lineX, screenY - hookY);
 
       if (dist < WIDTH * 0.2) {
-        // Ausweichgeschwindigkeit abhängig vom Wert
         const avoidStrength = f.value / 50;
         const angle = Math.atan2(screenY - hookY, f.x - lineX);
         f.x += Math.cos(angle) * avoidStrength * 4;
       }
 
-      // Bildschirmgrenzen
       if (f.x < 0) f.x = 0;
       if (f.x > WIDTH) f.x = WIDTH;
     }
@@ -283,7 +274,7 @@ function drawDepthMeter() {
       }
 
       credits -= costPerCast;
-      maxDepth = HEIGHT * 4 + 30 * chargeValue;
+      maxDepth = (chargeValue / 100) * absoluteMaxDepth;  // ✨ Tiefe je nach Wurf
       overlay.innerText = '';
       generateFish();
       currentDepth = 0;
