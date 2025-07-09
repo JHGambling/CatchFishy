@@ -19,11 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let rightPressed = false;
   let lineX = WIDTH / 2;
 
-  // Casino-System
   let credits = 100;
   const costPerCast = 5;
 
-  // 🎣 Fischbilder laden
   const fishImages = [];
   for (let i = 1; i <= 5; i++) {
     const img = new Image();
@@ -62,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDepth = maxDepth;
         gamePhase = 'returning';
       }
+      updateFish();
       drawFishes();
       drawHook();
     }
@@ -82,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
           resetGame();
         }
       } else {
+        updateFish();
         drawFishes();
         drawHook();
         checkCollisions();
@@ -138,12 +138,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const count = Math.floor(maxDepth / 100) + 20;
     for (let i = 0; i < count; i++) {
       const randomImg = fishImages[Math.floor(Math.random() * fishImages.length)];
+      const value = Math.floor(10 + Math.random() * 40);
       fish.push({
         x: Math.random() * WIDTH,
         depth: Math.random() * maxDepth,
         caught: false,
-        image: randomImg
+        image: randomImg,
+        value: value,
+        driftOffset: Math.random() * 2 * Math.PI
       });
+    }
+  }
+
+  function updateFish() {
+    const hookY = HEIGHT * 0.75;
+
+    for (let f of fish) {
+      if (f.caught) continue;
+
+      // Grundbewegung (langsames Driften)
+      f.driftOffset += 0.02;
+      f.x += Math.sin(f.driftOffset) * 0.5;
+
+      // Ausweichen bei Annäherung
+      const screenY = (f.depth - currentDepth) + hookY;
+      const dist = Math.hypot(f.x - lineX, screenY - hookY);
+
+      if (dist < WIDTH * 0.2) {
+        // Ausweichgeschwindigkeit hängt vom Wert ab
+        const avoidStrength = f.value / 50;  // z.B. 0.2 .. 1
+        const angle = Math.atan2(screenY - hookY, f.x - lineX);
+        f.x += Math.cos(angle) * avoidStrength * 4;
+      }
+
+      // Bildschirmgrenzen
+      if (f.x < 0) f.x = 0;
+      if (f.x > WIDTH) f.x = WIDTH;
     }
   }
 
@@ -155,9 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Math.hypot(f.x - lineX, screenY - hookY) < WIDTH * 0.02) {
           f.caught = true;
           score++;
-          const winAmount = Math.floor(10 + Math.random() * 40);
-          credits += winAmount;
-          overlay.innerText = `Gefangen! +${winAmount} Credits. Gesamt: ${credits}`;
+          credits += f.value;
+          overlay.innerText = `Gefangen! +${f.value} Credits. Gesamt: ${credits}`;
         }
       }
     }
