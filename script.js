@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDepth = 0;
 
   let fish = [];
+  let caughtFishes = [];
   let score = 0;
   let leftPressed = false;
   let rightPressed = false;
@@ -121,19 +122,34 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawHook() {
-    const hookY = HEIGHT * 0.75;
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(WIDTH / 2, 0);
-    ctx.lineTo(lineX, hookY);
-    ctx.stroke();
+  const hookY = HEIGHT * 0.75;
 
-    ctx.beginPath();
-    ctx.arc(lineX, hookY, WIDTH * 0.01, 0, 2 * Math.PI);
-    ctx.fillStyle = 'red';
-    ctx.fill();
+  // Schnur
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(WIDTH / 2, 0);
+  ctx.lineTo(lineX, hookY);
+  ctx.stroke();
+
+  // Haken
+  ctx.beginPath();
+  ctx.arc(lineX, hookY, WIDTH * 0.01, 0, 2 * Math.PI);
+  ctx.fillStyle = 'red';
+  ctx.fill();
+
+  // Gefangene Fische am Haken anzeigen
+  for (let i = 0; i < caughtFishes.length; i++) {
+    const f = caughtFishes[i];
+    const offset = i * HEIGHT * 0.05; // gestapelt untereinander
+    const y = hookY + offset;
+
+    const sizeW = WIDTH * f.scale;
+    const sizeH = HEIGHT * f.scale * 0.8;
+    ctx.drawImage(f.image, lineX - sizeW / 2, y - sizeH / 2, sizeW, sizeH);
   }
+}
+
 
   function generateFish() {
     fish = [];
@@ -211,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const screenY = (f.depth - currentDepth) + hookY;
         if (Math.hypot(f.x - lineX, screenY - hookY) < WIDTH * 0.02) {
           f.caught = true;
+          caughtFishes.push(f);
           score++;
           credits += f.value;
           overlay.innerText = `Gefangen! ${f.rarity.toUpperCase()} (+${f.value} Credits). Gesamt: ${credits}`;
@@ -225,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentDepth = 0;
     lineX = WIDTH / 2;
     score = 0;
+    caughtFishes = [];
   }
 
   document.addEventListener('keydown', (e) => {
