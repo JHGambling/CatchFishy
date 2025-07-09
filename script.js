@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let HEIGHT = window.innerHeight;
   resizeCanvas();
 
-  // Spielzustände
   let gamePhase = 'charging';
   let chargeValue = 0;
   let chargeDirection = 1;
@@ -16,17 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let fish = [];
   let score = 0;
-
   let leftPressed = false;
   let rightPressed = false;
   let lineX = WIDTH / 2;
 
-  // Casino-Variablen
+  // Casino-System
   let credits = 100;
   const costPerCast = 5;
 
-  const fishImage = new Image();
-  fishImage.src = 'images/fish1.png';
+  // 🎣 Fischbilder laden
+  const fishImages = [];
+  for (let i = 1; i <= 5; i++) {
+    const img = new Image();
+    img.src = `images/fish/fish${i}.png`;
+    fishImages.push(img);
+  }
 
   window.addEventListener('resize', () => {
     WIDTH = window.innerWidth;
@@ -40,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loop() {
-    // Wasserfarbe abhängig von Tiefe
     let waterBrightness = Math.min(255, Math.max(30, 255 - Math.floor(currentDepth / 6)));
     ctx.fillStyle = `rgb(0, ${waterBrightness}, ${waterBrightness + 30})`;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -102,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.strokeStyle = 'black';
     ctx.strokeRect(barX, barY, barWidth, barHeight);
 
-    overlay.innerText = `SPACE zum Werfen im richtigen Moment! Credits: ${credits}`;
+    overlay.innerText = `SPACE zum Werfen! Credits: ${credits}`;
   }
 
   function drawFishes() {
@@ -110,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!f.caught) {
         const screenY = (f.depth - currentDepth) + HEIGHT * 0.75;
         if (screenY > -40 && screenY < HEIGHT + 40) {
-          ctx.drawImage(fishImage, f.x - WIDTH * 0.025, screenY - HEIGHT * 0.02, WIDTH * 0.05, HEIGHT * 0.04);
+          ctx.drawImage(f.image, f.x - WIDTH * 0.025, screenY - HEIGHT * 0.02, WIDTH * 0.05, HEIGHT * 0.04);
         }
       }
     }
@@ -135,10 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
     fish = [];
     const count = Math.floor(maxDepth / 100) + 20;
     for (let i = 0; i < count; i++) {
+      const randomImg = fishImages[Math.floor(Math.random() * fishImages.length)];
       fish.push({
         x: Math.random() * WIDTH,
         depth: Math.random() * maxDepth,
-        caught: false
+        caught: false,
+        image: randomImg
       });
     }
   }
