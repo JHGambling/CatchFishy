@@ -3,10 +3,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const ctx = canvas.getContext('2d');
   const overlay = document.getElementById('overlay');
 
+  // Dynamische Größe
   let WIDTH = window.innerWidth;
   let HEIGHT = window.innerHeight;
   resizeCanvas();
 
+  // Spielzustände
   let gamePhase = 'charging';
   let chargeValue = 0;
   let chargeDirection = 1;
@@ -35,48 +37,65 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loop() {
-    // Wasserfarbe abhängig von Tiefe
-    let waterBrightness = Math.min(255, Math.max(30, 255 - Math.floor(currentDepth / 6)));
-    ctx.fillStyle = `rgb(0, ${waterBrightness}, ${waterBrightness + 30})`;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    drawBackground();
 
     if (gamePhase === 'charging') {
       drawChargeBar();
-      chargeValue += 4 * chargeDirection;
-      if (chargeValue >= 100 || chargeValue <= 0) {
-        chargeDirection *= -1;
-        chargeValue = Math.max(0, Math.min(100, chargeValue));
-      }
+      updateCharge();
     }
-
     else if (gamePhase === 'descending') {
-      currentDepth += HEIGHT * 0.01;  // Tiefe skaliert mit Bildschirmgröße
-      if (currentDepth >= maxDepth) {
-        currentDepth = maxDepth;
-        gamePhase = 'returning';
-      }
+      updateDescending();
       drawFishes();
       drawHook();
     }
-
     else if (gamePhase === 'returning') {
-      if (leftPressed) lineX -= WIDTH * 0.01;
-      if (rightPressed) lineX += WIDTH * 0.01;
-      lineX = Math.max(0, Math.min(WIDTH, lineX));
-
-      currentDepth -= HEIGHT * 0.005;
-      if (currentDepth <= 0) {
-        overlay.innerText = `Zug beendet! Punkte: ${score} (SPACE für neuen Wurf)`;
-        gamePhase = 'charging';
-        resetGame();
-      } else {
-        drawFishes();
-        drawHook();
-        checkCollisions();
-      }
+      handleInput();
+      updateReturning();
+      drawFishes();
+      drawHook();
+      checkCollisions();
     }
 
     requestAnimationFrame(loop);
+  }
+
+  // Hintergrund abhängig von Tiefe
+  function drawBackground() {
+    const brightness = Math.min(255, Math.max(30, 255 - Math.floor(currentDepth / 6)));
+    ctx.fillStyle = `rgb(0, ${brightness}, ${brightness + 30})`;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  }
+
+  function updateCharge() {
+    chargeValue += 4 * chargeDirection;
+    if (chargeValue >= 100 || chargeValue <= 0) {
+      chargeDirection *= -1;
+      chargeValue = Math.max(0, Math.min(100, chargeValue));
+    }
+  }
+
+  function updateDescending() {
+    currentDepth += HEIGHT * 0.01;
+    if (currentDepth >= maxDepth) {
+      currentDepth = maxDepth;
+      gamePhase = 'returning';
+    }
+  }
+
+  function updateReturning() {
+    currentDepth -= HEIGHT * 0.005;
+    if (currentDepth <= 0) {
+      currentDepth = 0;
+      overlay.innerText = `Zug beendet! Punkte: ${score} (SPACE für neuen Wurf)`;
+      gamePhase = 'charging';
+      resetGame();
+    }
+  }
+
+  function handleInput() {
+    if (leftPressed) lineX -= WIDTH * 0.01;
+    if (rightPressed) lineX += WIDTH * 0.01;
+    lineX = Math.max(0, Math.min(WIDTH, lineX));
   }
 
   function drawChargeBar() {
