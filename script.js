@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const ctx = canvas.getContext('2d');
   const overlay = document.getElementById('overlay');
 
-  // Dynamische Größe
   let WIDTH = window.innerWidth;
   let HEIGHT = window.innerHeight;
   resizeCanvas();
@@ -22,6 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let rightPressed = false;
   let lineX = WIDTH / 2;
 
+  // Casino-Variablen
+  let credits = 100;
+  const costPerCast = 5;
+
   const fishImage = new Image();
   fishImage.src = 'images/fish1.png';
 
@@ -37,65 +40,53 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loop() {
-    drawBackground();
+    // Wasserfarbe abhängig von Tiefe
+    let waterBrightness = Math.min(255, Math.max(30, 255 - Math.floor(currentDepth / 6)));
+    ctx.fillStyle = `rgb(0, ${waterBrightness}, ${waterBrightness + 30})`;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     if (gamePhase === 'charging') {
       drawChargeBar();
-      updateCharge();
+      chargeValue += 4 * chargeDirection;
+      if (chargeValue >= 100 || chargeValue <= 0) {
+        chargeDirection *= -1;
+        chargeValue = Math.max(0, Math.min(100, chargeValue));
+      }
     }
+
     else if (gamePhase === 'descending') {
-      updateDescending();
+      currentDepth += HEIGHT * 0.01;
+      if (currentDepth >= maxDepth) {
+        currentDepth = maxDepth;
+        gamePhase = 'returning';
+      }
       drawFishes();
       drawHook();
     }
+
     else if (gamePhase === 'returning') {
-      handleInput();
-      updateReturning();
-      drawFishes();
-      drawHook();
-      checkCollisions();
+      if (leftPressed) lineX -= WIDTH * 0.01;
+      if (rightPressed) lineX += WIDTH * 0.01;
+      lineX = Math.max(0, Math.min(WIDTH, lineX));
+
+      currentDepth -= HEIGHT * 0.005;
+      if (currentDepth <= 0) {
+        if (credits < costPerCast) {
+          overlay.innerText = `Zug beendet! Keine Credits mehr. Spiel vorbei.`;
+          gamePhase = 'gameover';
+        } else {
+          overlay.innerText = `Zug beendet! Punkte: ${score} | Credits: ${credits} (SPACE für neuen Wurf)`;
+          gamePhase = 'charging';
+          resetGame();
+        }
+      } else {
+        drawFishes();
+        drawHook();
+        checkCollisions();
+      }
     }
 
     requestAnimationFrame(loop);
-  }
-
-  // Hintergrund abhängig von Tiefe
-  function drawBackground() {
-    const brightness = Math.min(255, Math.max(30, 255 - Math.floor(currentDepth / 6)));
-    ctx.fillStyle = `rgb(0, ${brightness}, ${brightness + 30})`;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  }
-
-  function updateCharge() {
-    chargeValue += 4 * chargeDirection;
-    if (chargeValue >= 100 || chargeValue <= 0) {
-      chargeDirection *= -1;
-      chargeValue = Math.max(0, Math.min(100, chargeValue));
-    }
-  }
-
-  function updateDescending() {
-    currentDepth += HEIGHT * 0.01;
-    if (currentDepth >= maxDepth) {
-      currentDepth = maxDepth;
-      gamePhase = 'returning';
-    }
-  }
-
-  function updateReturning() {
-    currentDepth -= HEIGHT * 0.005;
-    if (currentDepth <= 0) {
-      currentDepth = 0;
-      overlay.innerText = `Zug beendet! Punkte: ${score} (SPACE für neuen Wurf)`;
-      gamePhase = 'charging';
-      resetGame();
-    }
-  }
-
-  function handleInput() {
-    if (leftPressed) lineX -= WIDTH * 0.01;
-    if (rightPressed) lineX += WIDTH * 0.01;
-    lineX = Math.max(0, Math.min(WIDTH, lineX));
   }
 
   function drawChargeBar() {
@@ -111,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.strokeStyle = 'black';
     ctx.strokeRect(barX, barY, barWidth, barHeight);
 
-    overlay.innerText = 'SPACE zum Werfen im richtigen Moment!';
+    overlay.innerText = `SPACE zum Werfen im richtigen Moment! Credits: ${credits}`;
   }
 
   function drawFishes() {
@@ -160,6 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Math.hypot(f.x - lineX, screenY - hookY) < WIDTH * 0.02) {
           f.caught = true;
           score++;
+          const winAmount = Math.floor(10 + Math.random() * 40);
+          credits += winAmount;
+          overlay.innerText = `Gefangen! +${winAmount} Credits. Gesamt: ${credits}`;
         }
       }
     }
@@ -175,6 +169,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('keydown', (e) => {
     if (gamePhase === 'charging' && e.code === 'Space') {
+      if (credits < costPerCast) {
+        overlay.innerText = 'Nicht genug Credits! Spiel vorbei.';
+        return;
+      }
+
+      credits -= costPerCast;
       maxDepth = HEIGHT * 4 + 30 * chargeValue;
       overlay.innerText = '';
       generateFish();
@@ -182,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
       lineX = WIDTH / 2;
       gamePhase = 'descending';
     }
+
     if (gamePhase === 'returning') {
       if (e.code === 'ArrowLeft') leftPressed = true;
       if (e.code === 'ArrowRight') rightPressed = true;
