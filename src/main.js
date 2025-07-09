@@ -1,3 +1,27 @@
+import { CasinoClient, ClientEvent } from "casino-sdk";
+
+// SDK setup
+const urlParams = new URLSearchParams(window.location.search);
+const wsUrl = urlParams.get("wsUrl") || "ws://localhost:9000";
+const token = urlParams.get("token") || "dev";
+const session = parseInt(urlParams.get("session") || "0");
+const useSDK = (urlParams.get("usesdk") || "").length > 0;
+
+const client = useSDK
+    ? new CasinoClient(wsUrl, {
+          authenticateFromLocalStorage: false,
+          clientType: "game-sdk",
+          token,
+          session,
+      })
+    : null;
+
+if (useSDK) {
+    client.on(ClientEvent.AUTH_SUCCESS, () => {
+        client.sendGameFinishedLoading();
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -45,6 +69,15 @@ document.addEventListener('DOMContentLoaded', () => {
     targetY: 0
   };
 
+  // SDK connection and wallet integration
+  if (client) {
+    client.connect();
+    client.casino.wallet.store.subscribe((wallet) => {
+      credits = wallet.NetworthCents / 100;
+      updateCreditsDisplay();
+    });
+  }
+
   window.addEventListener('resize', () => {
     WIDTH = window.innerWidth;
     HEIGHT = window.innerHeight;
@@ -54,6 +87,28 @@ document.addEventListener('DOMContentLoaded', () => {
   function resizeCanvas() {
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
+  }
+
+  // SDK transaction helper
+  async function processTransaction(amount, isWin) {
+    if (!client) return;
+
+    try {
+      if (isWin) {
+        await client.casino.wallet.addFunds(amount);
+      } else {
+        await client.casino.wallet.removeFunds(amount);
+      }
+    } catch (error) {
+      console.error("Transaction failed:", error);
+    }
+  }
+
+  function updateCreditsDisplay() {
+    // Update overlay to show current credits
+    if (gamePhase === 'charging') {
+      overlay.innerText = `SPACE zum Werfen! Credits: ${Math.floor(credits)}`;
+    }
   }
 
   function loop() {
@@ -92,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
           overlay.innerText = `Zug beendet! Keine Credits mehr. Spiel vorbei.`;
           gamePhase = 'gameover';
         } else {
-          overlay.innerText = `Zug beendet! Punkte: ${score} | Credits: ${credits} (SPACE für neuen Wurf)`;
+          overlay.innerText = `Zug beendet! Punkte: ${score} | Credits: ${Math.floor(credits)} (SPACE für neuen Wurf)`;
           gamePhase = 'charging';
           resetGame();
         }
@@ -126,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.strokeStyle = 'black';
     ctx.strokeRect(barX, barY, barWidth, barHeight);
 
-    overlay.innerText = `SPACE zum Werfen! Credits: ${credits}`;
+    overlay.innerText = `SPACE zum Werfen! Credits: ${Math.floor(credits)}`;
   }
 
   function drawFishes() {
@@ -256,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function checkCollisions() {
+  async function checkCollisions() {
     const hookY = HEIGHT * 0.75;
     for (let f of fish) {
       if (!f.caught) {
@@ -266,7 +321,11 @@ document.addEventListener('DOMContentLoaded', () => {
           caughtFishes.push(f);
           score++;
           credits += f.value;
-          overlay.innerText = `Gefangen! ${f.rarity.toUpperCase()} (+${f.value} Credits). Gesamt: ${credits}`;
+
+          // Process SDK transaction for win
+          await processTransaction(f.value, true);
+
+          overlay.innerText = `Gefangen! ${f.rarity.toUpperCase()} (+${f.value} Credits). Gesamt: ${Math.floor(credits)}`;
         }
       }
     }
@@ -301,14 +360,19 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.drawImage(sharkImage, shark.x - sizeW / 2, shark.y - sizeH / 2, sizeW, sizeH);
   }
 
-  function checkSharkSteal() {
+  async function checkSharkSteal() {
     if (!shark.active) return;
     const hookY = HEIGHT * 0.75;
     if (Math.hypot(shark.x - lineX, shark.y - hookY) < WIDTH * 0.05) {
       if (caughtFishes.length > 0) {
         const stolen = caughtFishes.splice(0, 1)[0];
-        credits -= Math.min(credits, stolen.value);
-        overlay.innerText = `⚠️ Hai hat einen ${stolen.rarity.toUpperCase()} Fisch gestohlen (-${stolen.value} Credits)!`;
+        const lossAmount = Math.min(credits, stolen.value);
+        credits -= lossAmount;
+
+        // Process SDK transaction for loss
+        await processTransaction(lossAmount, false);
+
+        overlay.innerText = `⚠️ Hai hat einen ${stolen.rarity.toUpperCase()} Fisch gestohlen (-${lossAmount} Credits)!`;
       } else {
         overlay.innerText = `⚠️ Hai ist leer ausgegangen.`;
       }
@@ -326,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     shark.active = false;
   }
 
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', async (e) => {
     if (gamePhase === 'charging' && e.code === 'Space') {
       if (credits < costPerCast) {
         overlay.innerText = 'Nicht genug Credits! Spiel vorbei.';
@@ -334,6 +398,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       credits -= costPerCast;
+
+      // Process SDK transaction for cast cost
+      await processTransaction(costPerCast, false);
+
       maxDepth = (chargeValue / 100) * absoluteMaxDepth;
       overlay.innerText = '';
       generateFish();

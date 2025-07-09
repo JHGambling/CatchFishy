@@ -1,0 +1,23 @@
+{
+    "name": "catchfishy",
+    "version": "1.0.0",
+    "description": "CatchFishy fishing game for the JHGambling Casino",
+    "main": "src/main.js",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "devDependencies": {
+        "vite": "^6.3.5"
+    },
+    "keywords": [
+        "fishing",
+        "gambling",
+        "casino",
+        "catchfishy"
+    ],
+    "dependencies": {
+        "casino-sdk": "github:JHGambling/sdk"
+    }
+}
