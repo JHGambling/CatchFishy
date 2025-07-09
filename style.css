@@ -51,3 +51,19 @@ canvas:hover {
 #overlay:hover {
   background: rgba(0, 0, 0, 0.9);
 }
+
+#logo {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 80px;
+  height: auto;
+  z-index: 10;
+  opacity: 0.9;
+  transition: opacity 0.3s;
+}
+
+#logo:hover {
+  opacity: 1;
+  cursor: pointer;
+}

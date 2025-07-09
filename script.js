@@ -57,14 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loop() {
-    const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-    const topColor = `rgb(0, ${waterBrightness}, ${waterBrightness + 30})`;
-    const bottomColor = `rgb(0, ${Math.max(10, waterBrightness - 40)}, ${Math.max(20, waterBrightness - 20)})`;
-    gradient.addColorStop(0, topColor);
-    gradient.addColorStop(1, bottomColor);
-    ctx.fillStyle = gradient;
+    let waterBrightness = Math.min(255, Math.max(30, 255 - Math.floor((currentDepth / absoluteMaxDepth) * 225)));
+    ctx.fillStyle = `rgb(0, ${waterBrightness}, ${waterBrightness + 30})`;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
 
     if (gamePhase === 'charging') {
       drawChargeBar();
