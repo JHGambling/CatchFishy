@@ -112,7 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!f.caught) {
         const screenY = (f.depth - currentDepth) + HEIGHT * 0.75;
         if (screenY > -40 && screenY < HEIGHT + 40) {
-          ctx.drawImage(f.image, f.x - WIDTH * 0.025, screenY - HEIGHT * 0.02, WIDTH * 0.05, HEIGHT * 0.04);
+          const sizeW = WIDTH * f.scale;
+          const sizeH = HEIGHT * f.scale * 0.8;
+          ctx.drawImage(f.image, f.x - sizeW / 2, screenY - sizeH / 2, sizeW, sizeH);
         }
       }
     }
@@ -137,14 +139,39 @@ document.addEventListener('DOMContentLoaded', () => {
     fish = [];
     const count = Math.floor(maxDepth / 100) + 20;
     for (let i = 0; i < count; i++) {
+      // Rarity bestimmen
+      const rarityRoll = Math.random();
+      let rarity, valueRange, scaleRange;
+      if (rarityRoll < 0.05) {
+        rarity = 'legendary';
+        valueRange = [100, 150];
+        scaleRange = [0.08, 0.1];
+      } else if (rarityRoll < 0.15) {
+        rarity = 'epic';
+        valueRange = [50, 80];
+        scaleRange = [0.06, 0.08];
+      } else if (rarityRoll < 0.4) {
+        rarity = 'rare';
+        valueRange = [20, 40];
+        scaleRange = [0.045, 0.06];
+      } else {
+        rarity = 'common';
+        valueRange = [5, 15];
+        scaleRange = [0.03, 0.045];
+      }
+
       const randomImg = fishImages[Math.floor(Math.random() * fishImages.length)];
-      const value = Math.floor(10 + Math.random() * 40);
+      const value = Math.floor(valueRange[0] + Math.random() * (valueRange[1] - valueRange[0]));
+      const scale = scaleRange[0] + Math.random() * (scaleRange[1] - scaleRange[0]);
+
       fish.push({
         x: Math.random() * WIDTH,
         depth: Math.random() * maxDepth,
         caught: false,
         image: randomImg,
         value: value,
+        rarity: rarity,
+        scale: scale,
         driftOffset: Math.random() * 2 * Math.PI
       });
     }
@@ -165,8 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const dist = Math.hypot(f.x - lineX, screenY - hookY);
 
       if (dist < WIDTH * 0.2) {
-        // Ausweichgeschwindigkeit hängt vom Wert ab
-        const avoidStrength = f.value / 50;  // z.B. 0.2 .. 1
+        // Ausweichgeschwindigkeit abhängig vom Wert
+        const avoidStrength = f.value / 50;
         const angle = Math.atan2(screenY - hookY, f.x - lineX);
         f.x += Math.cos(angle) * avoidStrength * 4;
       }
@@ -186,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
           f.caught = true;
           score++;
           credits += f.value;
-          overlay.innerText = `Gefangen! +${f.value} Credits. Gesamt: ${credits}`;
+          overlay.innerText = `Gefangen! ${f.rarity.toUpperCase()} (+${f.value} Credits). Gesamt: ${credits}`;
         }
       }
     }
